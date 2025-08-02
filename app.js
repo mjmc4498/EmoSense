@@ -150,20 +150,20 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("EmoSense: Loading AI models...");
     const [faceApiModel, handposeModel] = await Promise.all([
       (async () => {
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-        console.log("EmoSense: Loading face-api models...");
+        const MODEL_URL = './models'; // Use local path
+        console.log("EmoSense: Loading face-api models from local path...");
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
         await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
         console.log("EmoSense: Face-api models loaded.");
         return true;
       })(),
-      // (async () => {
-      //   console.log("EmoSense: Loading handpose model...");
-      //   const model = await handpose.load();
-      //   console.log("EmoSense: Handpose model loaded.");
-      //   return model;
-      // })()
-      Promise.resolve(null) // Resolve with null for handpose
+      (async () => {
+        console.log("EmoSense: Loading handpose model from local path...");
+        // Note: The path for handpose is to the model.json file itself.
+        const model = await handpose.load({ modelUrl: './models/handpose_model/model.json' });
+        console.log("EmoSense: Handpose model loaded.");
+        return model;
+      })()
     ]).catch(err => {
       console.error("Error loading models:", err);
       updateStatus(emotionOutput, "Error al cargar modelos de IA. Por favor, comprueba tu conexión a internet y recarga la página.", true);
@@ -202,15 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
      * The main detection loop, running on every animation frame.
      */
     async function detect(handposeModel, gestureEstimator) {
-      console.log("EmoSense: Detection loop running.");
       context.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Run only face detection
-      const faceDetections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-      // const [faceDetections, handDetections] = await Promise.all([
-      //   faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions(),
-      //   handposeModel.estimateHands(video, { flipHorizontal: true })
-      // ]);
+      // Run both detections concurrently
+      const [faceDetections, handDetections] = await Promise.all([
+        faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions(),
+        handposeModel.estimateHands(video, { flipHorizontal: true })
+      ]);
 
       // --- Process Emotion Detections ---
       if (faceDetections.length > 0) {
@@ -230,29 +228,29 @@ document.addEventListener('DOMContentLoaded', () => {
         lastSpokenEmotion = ""; // Reset if no face is detected
       }
 
-      // --- Process Gesture Detections (Temporarily Disabled) ---
-      // if (handDetections && handDetections.length > 0) {
-      //   // Estimate gestures with a confidence score threshold
-      //   const estimatedGestures = gestureEstimator.estimate(handDetections[0].landmarks, 8.5);
+      // --- Process Gesture Detections ---
+      if (handDetections.length > 0) {
+        // Estimate gestures with a confidence score threshold
+        const estimatedGestures = gestureEstimator.estimate(handDetections[0].landmarks, 8.5);
 
-      //   if (estimatedGestures.gestures.length > 0) {
-      //     const bestGesture = estimatedGestures.gestures.sort((a, b) => b.score - a.score)[0];
-      //     const gestureName = bestGesture.name;
+        if (estimatedGestures.gestures.length > 0) {
+          const bestGesture = estimatedGestures.gestures.sort((a, b) => b.score - a.score)[0];
+          const gestureName = bestGesture.name;
 
-      //     if (gestureName !== lastSpokenGesture) {
-      //       lastSpokenGesture = gestureName;
-      //       const message = `Gesto: ${gestureName}`;
-      //       updateStatus(gestureOutput, message, true, true);
-      //     }
-      //   } else {
-      //       lastSpokenGesture = ""; // Reset if no gesture is recognized
-      //   }
-      // } else {
-      //   lastSpokenGesture = ""; // Reset if no hand is detected
-      // }
+          if (gestureName !== lastSpokenGesture) {
+            lastSpokenGesture = gestureName;
+            const message = `Gesto: ${gestureName}`;
+            updateStatus(gestureOutput, message, true, true);
+          }
+        } else {
+            lastSpokenGesture = ""; // Reset if no gesture is recognized
+        }
+      } else {
+        lastSpokenGesture = ""; // Reset if no hand is detected
+      }
 
       // Continue the loop
-      requestAnimationFrame(detect);
+      requestAnimationFrame(() => detect(handposeModel, gestureEstimator));
     }
   }
 

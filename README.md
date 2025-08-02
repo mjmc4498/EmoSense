@@ -11,6 +11,36 @@ EmoSense es una aplicación web innovadora diseñada como una herramienta de asi
 - **Interfaz Unificada:** Combina ambas funcionalidades en una sola pantalla para una experiencia de usuario fluida.
 - **Sin Servidores y Gratuito:** Funciona completamente en el navegador del cliente, utilizando bibliotecas de IA de código abierto. No requiere instalación ni servidores.
 
+## ⚠️ Configuración de Modelos (Paso Requerido)
+
+Para que la aplicación funcione, es **esencial** que descargues los modelos de inteligencia artificial y los coloques en la carpeta `/models` de este proyecto.
+
+1.  **Descarga los modelos:**
+    *   **Modelos de `face-api.js`:** Ve a [este repositorio](https://github.com/justadudewhohacks/face-api.js-models/tree/master/weights) y descarga los siguientes archivos:
+        - `tiny_face_detector_model-weights_manifest.json`
+        - `tiny_face_detector_model.weights`
+        - `face_expression_model-weights_manifest.json`
+        - `face_expression_model.weights`
+    *   **Modelo de `handpose`:** Descarga los siguientes archivos desde [este enlace de TensorFlow Hub](https://tfhub.dev/mediapipe/tfjs-model/handpose/1/default/1):
+        - `model.json`
+        - `group1-shard1of1.bin` (o cualquier otro archivo `.bin`)
+2.  **Organiza los archivos:**
+    *   Coloca los 4 archivos de `face-api.js` directamente dentro de la carpeta `/models`.
+    *   Crea una subcarpeta llamada `handpose_model` dentro de `/models`.
+    *   Coloca los archivos `model.json` y los `.bin` de handpose dentro de `/models/handpose_model/`.
+
+La estructura final de tu carpeta `/models` debería verse así:
+```
+/models
+├── face_expression_model-weights_manifest.json
+├── face_expression_model.weights
+├── tiny_face_detector_model-weights_manifest.json
+├── tiny_face_detector_model.weights
+└── /handpose_model
+    ├── model.json
+    └── group1-shard1of1.bin
+```
+
 ## 🚀 Cómo Usar la Aplicación
 
 1.  **Abrir la Aplicación:** Simplemente abre el archivo `index.html` en un navegador web moderno (como Chrome, Firefox, o Edge) o accede al enlace de GitHub Pages.
