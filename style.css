@@ -1,0 +1,79 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #121212;
+  color: #f5f5f5;
+  text-align: center;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+#video-container {
+  position: relative;
+  width: 320px;
+  height: 240px;
+  margin: 10px auto;
+}
+
+video, canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 2px solid #444;
+  border-radius: 10px;
+}
+
+#status-output {
+  margin-top: 20px;
+  font-size: 1.5em;
+  min-height: 1.5em;
+}
+
+label, select {
+  margin-top: 10px;
+  font-size: 1em;
+}
+
+#log-container {
+  margin-top: 20px;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 10px;
+  background-color: #1e1e1e;
+}
+
+#log-container h2 {
+  margin-top: 0;
+  font-size: 1.2em;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+#emotion-log {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  height: 150px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+#emotion-log li {
+  padding: 8px 5px;
+  border-bottom: 1px solid #333;
+  font-size: 0.9em;
+}
+
+#emotion-log li:last-child {
+  border-bottom: none;
+}
