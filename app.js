@@ -1,4 +1,13 @@
+/**
+ * EmoSense - Real-time Emotion and Gesture Recognition
+ *
+ * This script integrates two main functionalities:
+ * 1. Facial emotion recognition using face-api.js.
+ * 2. Hand gesture recognition (ASL alphabet and common words) using TensorFlow.js, Handpose, and Fingerpose.
+ * It loads all models, runs detections in a unified loop, and provides visual and auditory feedback.
+ */
 document.addEventListener('DOMContentLoaded', () => {
+  // --- DOM Elements ---
   const video = document.getElementById('video');
   const canvas = document.getElementById('overlay');
   const context = canvas.getContext('2d');
@@ -6,17 +15,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const gestureOutput = document.getElementById('gesture-output');
   const eventLog = document.getElementById('event-log');
   const sensitivitySelect = document.getElementById('sensitivity');
+  const instructionsPanel = document.getElementById('instructions');
+  const closeButton = document.getElementById('close-instructions');
 
+  // --- State Variables ---
   let lastSpokenEmotion = "";
   let lastSpokenGesture = "";
+  let lastSpeechTime = 0;
+  const speechCooldown = 3000; // 3 seconds
 
-  // --- Emotion Recognition Data ---
+  // --- Event Listeners ---
+  if (closeButton) {
+    closeButton.addEventListener('click', () => {
+      instructionsPanel.style.display = 'none';
+    });
+  }
+
+  // --- Data Definitions ---
+
+  // Emotion translations
   const emotionTranslations = {
     neutral: 'neutral', happy: 'feliz', sad: 'triste', angry: 'enfadada',
     fearful: 'asustada', disgusted: 'asqueada', surprised: 'sorprendida'
   };
 
-  // --- Gesture Recognition Data ---
+  // Gesture definitions for ASL alphabet
   const letters = {
     'A': (()=>{ const d=new fp.GestureDescription('A');d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpRight,.9);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
     'B': (()=>{ const d=new fp.GestureDescription('B');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,1)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.8);return d })(),
@@ -45,6 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'Y': (()=>{ const d=new fp.GestureDescription('Y');d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
     'Z': (()=>{ const d=new fp.GestureDescription('Z');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
   };
+
+  // Gesture definitions for common words
   const words = {
     'I_love_you': (()=>{ const d=new fp.GestureDescription('Te quiero');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,.9);for(let f of[fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
     'Yes': (()=>{ const d=new fp.GestureDescription('Sí');d.addCurl(fp.Finger.Index,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Ring,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Ring,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalDown,1);return d })(),
@@ -52,16 +77,34 @@ document.addEventListener('DOMContentLoaded', () => {
     'Hello': (()=>{ const d=new fp.GestureDescription('Hola');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,1)}return d })(),
     'Thank_you': (()=>{ const d=new fp.GestureDescription('Gracias');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.DiagonalUpLeft,1)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.8);return d })(),
   };
+
   const allGestures = [...Object.values(letters), ...Object.values(words)];
 
   // --- Helper Functions ---
+
+  /**
+   * Uses the browser's Speech Synthesis API to speak text aloud.
+   * Includes a cooldown to prevent spamming the user.
+   * @param {string} text The text to be spoken.
+   * @param {boolean} interrupt If true, cancels any ongoing speech.
+   */
   function speak(text, interrupt = false) {
+    const now = Date.now();
+    if (now - lastSpeechTime < speechCooldown) {
+      return; // Cooldown active, do not speak
+    }
+    lastSpeechTime = now;
+
     if (interrupt) speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'es-ES';
     speechSynthesis.speak(utterance);
   }
 
+  /**
+   * Adds a new entry to the event log on the UI.
+   * @param {string} message The message to log.
+   */
   function logEvent(message) {
     const timestamp = new Date().toLocaleTimeString('es-ES');
     const logEntry = document.createElement('li');
@@ -72,17 +115,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * Updates a status element on the UI, with options to speak and log the message.
+   * Also triggers a visual feedback animation.
+   * @param {HTMLElement} element The DOM element to update.
+   * @param {string} message The message to display.
+   * @param {boolean} shouldSpeak If true, the message will be spoken aloud.
+   * @param {boolean} shouldLog If true, the message will be added to the event log.
+   */
   function updateStatus(element, message, shouldSpeak = false, shouldLog = false) {
     element.textContent = message;
+
+    // Trigger visual feedback animation
+    element.classList.add('detected');
+    setTimeout(() => {
+      element.classList.remove('detected');
+    }, 500); // Must match the animation duration in style.css
+
     if (shouldSpeak) speak(message, true);
     if (shouldLog) logEvent(message);
   }
 
   // --- Main Application Logic ---
+
+  /**
+   * The main function to initialize the application.
+   * Loads all AI models and sets up the camera.
+   */
   async function main() {
     updateStatus(emotionOutput, "Cargando modelos de IA...", true);
 
-    // Load models in parallel
+    // Load all models in parallel for efficiency
     const [faceApiModel, handposeModel] = await Promise.all([
       (async () => {
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
@@ -97,49 +160,66 @@ document.addEventListener('DOMContentLoaded', () => {
       return [null, null];
     });
 
-    if (!faceApiModel || !handposeModel) return;
+    if (!faceApiModel || !handposeModel) {
+      console.error("One or more models failed to load. Halting execution.");
+      return;
+    }
 
+    // Initialize the gesture estimator with all defined gestures
     const gestureEstimator = new fp.GestureEstimator(allGestures);
 
     updateStatus(emotionOutput, "Modelos cargados. Iniciando cámara...", true);
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-    video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      video.play();
-      updateStatus(emotionOutput, "Detección de emociones activa.", false);
-      updateStatus(gestureOutput, "Detección de gestos activa.", false);
-      detect();
-    };
+    // Set up and start the webcam
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+        updateStatus(emotionOutput, "Detección de emociones activa.", false);
+        updateStatus(gestureOutput, "Detección de gestos activa.", false);
+        detect(); // Start the detection loop
+      };
+    } catch(err) {
+        console.error("Error accessing camera:", err);
+        updateStatus(emotionOutput, "Error: No se pudo acceder a la cámara. Conceda permiso.", true);
+    }
 
+    /**
+     * The main detection loop, running on every animation frame.
+     */
     async function detect() {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Run detections
+      // Run both detections concurrently
       const [faceDetections, handDetections] = await Promise.all([
         faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions(),
         handposeModel.estimateHands(video, { flipHorizontal: true })
       ]);
 
-      // Process face detections
+      // --- Process Emotion Detections ---
       if (faceDetections.length > 0) {
         const expressions = faceDetections[0].expressions;
         const sensitivity = parseFloat(sensitivitySelect.value);
-        const [topEmotionName] = Object.entries(expressions).sort((a,b) => b[1] - a[1])[0];
-        const translatedEmotion = emotionTranslations[topEmotionName] || topEmotionName;
+        const [topEmotionName, confidence] = Object.entries(expressions).sort((a,b) => b[1] - a[1])[0];
 
-        if (translatedEmotion !== lastSpokenEmotion) {
-          lastSpokenEmotion = translatedEmotion;
-          const message = `Emoción: ${translatedEmotion}`;
-          updateStatus(emotionOutput, message, true, true);
+        if(confidence > sensitivity) {
+            const translatedEmotion = emotionTranslations[topEmotionName] || topEmotionName;
+            if (translatedEmotion !== lastSpokenEmotion) {
+              lastSpokenEmotion = translatedEmotion;
+              const message = `Emoción: ${translatedEmotion}`;
+              updateStatus(emotionOutput, message, true, true);
+            }
         }
       } else {
-        lastSpokenEmotion = "";
+        lastSpokenEmotion = ""; // Reset if no face is detected
       }
 
-      // Process hand detections
+      // --- Process Gesture Detections ---
       if (handDetections.length > 0) {
+        // Estimate gestures with a confidence score threshold
         const estimatedGestures = gestureEstimator.estimate(handDetections[0].landmarks, 8.5);
+
         if (estimatedGestures.gestures.length > 0) {
           const bestGesture = estimatedGestures.gestures.sort((a, b) => b.score - a.score)[0];
           const gestureName = bestGesture.name;
@@ -150,15 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus(gestureOutput, message, true, true);
           }
         } else {
-            lastSpokenGesture = "";
+            lastSpokenGesture = ""; // Reset if no gesture is recognized
         }
       } else {
-        lastSpokenGesture = "";
+        lastSpokenGesture = ""; // Reset if no hand is detected
       }
 
+      // Continue the loop
       requestAnimationFrame(detect);
     }
   }
 
+  // Start the application
   main();
 });
