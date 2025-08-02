@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadModels() {
-    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
     try {
       updateStatus("Cargando modelos de IA...", true);
       await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateStatus("Modelos cargados.", true);
     } catch (err) {
       console.error("Error al cargar modelos:", err);
-      updateStatus("Error: No se pudieron cargar los modelos de detección.", true);
+      updateStatus("Error: No se pudieron cargar los modelos de IA. Comprueba tu conexión a internet.", true);
     }
   }
 
