@@ -38,7 +38,7 @@ Puedes alojar esta aplicación de forma gratuita en la web usando GitHub Pages. 
 
 Una vez desplegada, podrás acceder a tu aplicación desde el siguiente enlace. ¡No olvides reemplazar los placeholders!
 
-`https://<tu-usuario-de-github>.github.io/<nombre-de-tu-repositorio>/`
+`https://mjmc4498.github.io/EmoSense/`
 
 ---
 *Creado con la ayuda de Jules, tu asistente de ingeniería de software.*
