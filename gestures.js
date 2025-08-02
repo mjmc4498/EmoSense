@@ -38,6 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
     'Z': (()=>{ const d=new fp.GestureDescription('Z');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(), // Z is dynamic, this is a static approximation
   };
 
+  const words = {
+    'I_love_you': (()=>{ const d=new fp.GestureDescription('Te quiero');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,.9);for(let f of[fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
+    'Yes': (()=>{ const d=new fp.GestureDescription('Sí');d.addCurl(fp.Finger.Index,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Ring,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Ring,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalDown,1);return d })(), // This is a fist, often used for 'Yes'
+    'No': (()=>{ const d=new fp.GestureDescription('No');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);for(let f of[fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(), // Index and middle finger together pointing up
+    'Hello': (()=>{ const d=new fp.GestureDescription('Hola');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,1)}return d })(), // Open hand, approximation of a wave
+    'Thank_you': (()=>{ const d=new fp.GestureDescription('Gracias');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.DiagonalUpLeft,1)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.8);return d })(), // Flat hand moving from chin
+  };
+
 
 
   function speak(text, interrupt = false) {
@@ -73,7 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const gestureEstimator = new fp.GestureEstimator(Object.values(letters));
+  const allGestures = [...Object.values(letters), ...Object.values(words)];
+  const gestureEstimator = new fp.GestureEstimator(allGestures);
 
   async function detectHands() {
     if (model) {
