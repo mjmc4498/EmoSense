@@ -24,14 +24,26 @@
     </select>
   </div>
 
-  <div id="status-output" aria-live="polite">Cargando...</div>
+  <div id="emotion-output" aria-live="polite">Cargando Emociones...</div>
+  <div id="gesture-output" aria-live="polite">Cargando Gestos...</div>
 
   <div id="log-container">
-    <h2>Registro de Emociones</h2>
-    <ol id="emotion-log"></ol>
+    <h2>Registro de Eventos</h2>
+    <ol id="event-log"></ol>
   </div>
 
+  <!-- Face-api.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-  <script defer src="script.js"></script>
+
+  <!-- TensorFlow.js y dependencias -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@3.7.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@3.7.0/dist/tf-converter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@3.7.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7/dist/handpose.min.js"></script>
+
+  <!-- Fingerpose -->
+  <script src="https://cdn.jsdelivr.net/npm/fingerpose@0.1.0/dist/fingerpose.min.js"></script>
+
+  <script defer src="app.js"></script>
 </body>
 </html>

@@ -2,13 +2,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const video = document.getElementById('video');
   const canvas = document.getElementById('overlay');
   const context = canvas.getContext('2d');
-  const statusOutput = document.getElementById('status-output');
+  const emotionOutput = document.getElementById('emotion-output');
+  const gestureOutput = document.getElementById('gesture-output');
+  const eventLog = document.getElementById('event-log');
+  const sensitivitySelect = document.getElementById('sensitivity');
 
-  let model = null;
+  let lastSpokenEmotion = "";
   let lastSpokenGesture = "";
 
-  // Define gestures for all 26 letters of the ASL alphabet using Fingerpose
+  // --- Emotion Recognition Data ---
+  const emotionTranslations = {
+    neutral: 'neutral', happy: 'feliz', sad: 'triste', angry: 'enfadada',
+    fearful: 'asustada', disgusted: 'asqueada', surprised: 'sorprendida'
+  };
 
+  // --- Gesture Recognition Data ---
   const letters = {
     'A': (()=>{ const d=new fp.GestureDescription('A');d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpRight,.9);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
     'B': (()=>{ const d=new fp.GestureDescription('B');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,1)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.8);return d })(),
@@ -19,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'G': (()=>{ const d=new fp.GestureDescription('G');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.HorizontalLeft,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,.8);return d })(),
     'H': (()=>{ const d=new fp.GestureDescription('H');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.HorizontalLeft,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.HorizontalLeft,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,.8);return d })(),
     'I': (()=>{ const d=new fp.GestureDescription('I');d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);return d })(),
-    'J': (()=>{ const d=new fp.GestureDescription('J');d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);return d })(), // J is dynamic, this is a static approximation
+    'J': (()=>{ const d=new fp.GestureDescription('J');d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);return d })(),
     'K': (()=>{ const d=new fp.GestureDescription('K');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.DiagonalUpLeft,1);for(let f of[fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.9);return d })(),
     'L': (()=>{ const d=new fp.GestureDescription('L');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
     'M': (()=>{ const d=new fp.GestureDescription('M');d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalDown,.8);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalDown,1)}d.addCurl(fp.Finger.Pinky,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalDown,.9);return d })(),
@@ -35,102 +43,120 @@ document.addEventListener('DOMContentLoaded', () => {
     'W': (()=>{ const d=new fp.GestureDescription('W');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Ring,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Ring,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,.9);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);return d })(),
     'X': (()=>{ const d=new fp.GestureDescription('X');d.addCurl(fp.Finger.Index,fp.FingerCurl.HalfCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);return d })(),
     'Y': (()=>{ const d=new fp.GestureDescription('Y');d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
-    'Z': (()=>{ const d=new fp.GestureDescription('Z');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(), // Z is dynamic, this is a static approximation
+    'Z': (()=>{ const d=new fp.GestureDescription('Z');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.HorizontalLeft,1);for(let f of[fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
   };
-
   const words = {
     'I_love_you': (()=>{ const d=new fp.GestureDescription('Te quiero');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.9);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.HorizontalLeft,.9);for(let f of[fp.Finger.Middle,fp.Finger.Ring]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
-    'Yes': (()=>{ const d=new fp.GestureDescription('Sí');d.addCurl(fp.Finger.Index,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Ring,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Ring,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalDown,1);return d })(), // This is a fist, often used for 'Yes'
-    'No': (()=>{ const d=new fp.GestureDescription('No');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);for(let f of[fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(), // Index and middle finger together pointing up
-    'Hello': (()=>{ const d=new fp.GestureDescription('Hola');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,1)}return d })(), // Open hand, approximation of a wave
-    'Thank_you': (()=>{ const d=new fp.GestureDescription('Gracias');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.DiagonalUpLeft,1)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.8);return d })(), // Flat hand moving from chin
+    'Yes': (()=>{ const d=new fp.GestureDescription('Sí');d.addCurl(fp.Finger.Index,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Ring,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Ring,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Pinky,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Pinky,fp.FingerDirection.VerticalDown,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalDown,1);return d })(),
+    'No': (()=>{ const d=new fp.GestureDescription('No');d.addCurl(fp.Finger.Index,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Index,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Middle,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Middle,fp.FingerDirection.VerticalUp,1);d.addCurl(fp.Finger.Thumb,fp.FingerCurl.FullCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.VerticalUp,.8);for(let f of[fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.FullCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,.9)}return d })(),
+    'Hello': (()=>{ const d=new fp.GestureDescription('Hola');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky,fp.Finger.Thumb]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.VerticalUp,1)}return d })(),
+    'Thank_you': (()=>{ const d=new fp.GestureDescription('Gracias');for(let f of[fp.Finger.Index,fp.Finger.Middle,fp.Finger.Ring,fp.Finger.Pinky]){d.addCurl(f,fp.FingerCurl.NoCurl,1);d.addDirection(f,fp.FingerDirection.DiagonalUpLeft,1)}d.addCurl(fp.Finger.Thumb,fp.FingerCurl.NoCurl,1);d.addDirection(fp.Finger.Thumb,fp.FingerDirection.DiagonalUpLeft,.8);return d })(),
   };
+  const allGestures = [...Object.values(letters), ...Object.values(words)];
 
-
-
+  // --- Helper Functions ---
   function speak(text, interrupt = false) {
-    if (interrupt) {
-      speechSynthesis.cancel();
-    }
+    if (interrupt) speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'es-ES';
     speechSynthesis.speak(utterance);
   }
 
-  function updateStatus(message, shouldSpeak = false) {
-    statusOutput.textContent = message;
-    if (shouldSpeak) {
-      speak(message, true);
+  function logEvent(message) {
+    const timestamp = new Date().toLocaleTimeString('es-ES');
+    const logEntry = document.createElement('li');
+    logEntry.textContent = `[${timestamp}] ${message}`;
+    eventLog.prepend(logEntry);
+    if (eventLog.children.length > 20) {
+      eventLog.removeChild(eventLog.lastChild);
     }
   }
 
-  async function setupCamera() {
-    try {
-      updateStatus("Accediendo a la cámara...", true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      video.srcObject = stream;
-      return new Promise((resolve) => {
-        video.onloadedmetadata = () => {
-          video.play();
-          resolve(video);
-        };
-      });
-    } catch (err) {
-      console.error("Error al acceder a la cámara:", err);
-      updateStatus("Error: No se pudo acceder a la cámara. Asegúrate de dar permiso.", true);
-    }
+  function updateStatus(element, message, shouldSpeak = false, shouldLog = false) {
+    element.textContent = message;
+    if (shouldSpeak) speak(message, true);
+    if (shouldLog) logEvent(message);
   }
 
-  const allGestures = [...Object.values(letters), ...Object.values(words)];
-  const gestureEstimator = new fp.GestureEstimator(allGestures);
+  // --- Main Application Logic ---
+  async function main() {
+    updateStatus(emotionOutput, "Cargando modelos de IA...", true);
 
-  async function detectHands() {
-    if (model) {
-      const hands = await model.estimateHands(video, { flipHorizontal: true });
+    // Load models in parallel
+    const [faceApiModel, handposeModel] = await Promise.all([
+      (async () => {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        return true;
+      })(),
+      handpose.load()
+    ]).catch(err => {
+      console.error("Error loading models:", err);
+      updateStatus(emotionOutput, "Error crítico al cargar modelos. Revise la conexión.", true);
+      return [null, null];
+    });
+
+    if (!faceApiModel || !handposeModel) return;
+
+    const gestureEstimator = new fp.GestureEstimator(allGestures);
+
+    updateStatus(emotionOutput, "Modelos cargados. Iniciando cámara...", true);
+
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      video.play();
+      updateStatus(emotionOutput, "Detección de emociones activa.", false);
+      updateStatus(gestureOutput, "Detección de gestos activa.", false);
+      detect();
+    };
+
+    async function detect() {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (hands.length > 0) {
-        const estimatedGestures = gestureEstimator.estimate(hands[0].landmarks, 8.5); // Confidence score 8.5
+      // Run detections
+      const [faceDetections, handDetections] = await Promise.all([
+        faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions(),
+        handposeModel.estimateHands(video, { flipHorizontal: true })
+      ]);
 
+      // Process face detections
+      if (faceDetections.length > 0) {
+        const expressions = faceDetections[0].expressions;
+        const sensitivity = parseFloat(sensitivitySelect.value);
+        const [topEmotionName] = Object.entries(expressions).sort((a,b) => b[1] - a[1])[0];
+        const translatedEmotion = emotionTranslations[topEmotionName] || topEmotionName;
+
+        if (translatedEmotion !== lastSpokenEmotion) {
+          lastSpokenEmotion = translatedEmotion;
+          const message = `Emoción: ${translatedEmotion}`;
+          updateStatus(emotionOutput, message, true, true);
+        }
+      } else {
+        lastSpokenEmotion = "";
+      }
+
+      // Process hand detections
+      if (handDetections.length > 0) {
+        const estimatedGestures = gestureEstimator.estimate(handDetections[0].landmarks, 8.5);
         if (estimatedGestures.gestures.length > 0) {
           const bestGesture = estimatedGestures.gestures.sort((a, b) => b.score - a.score)[0];
           const gestureName = bestGesture.name;
 
           if (gestureName !== lastSpokenGesture) {
             lastSpokenGesture = gestureName;
-            const message = `Gesto detectado: ${gestureName}`;
-            updateStatus(message, true);
+            const message = `Gesto: ${gestureName}`;
+            updateStatus(gestureOutput, message, true, true);
           }
         } else {
-            if(lastSpokenGesture !== '') {
-                lastSpokenGesture = '';
-                updateStatus("No se reconoce el gesto.", false);
-            }
+            lastSpokenGesture = "";
         }
       } else {
-        if(lastSpokenGesture !== '') {
-            lastSpokenGesture = '';
-            updateStatus("No se detecta ninguna mano.", false);
-        }
+        lastSpokenGesture = "";
       }
-    }
-    requestAnimationFrame(detectHands);
-  }
 
-  async function main() {
-    try {
-      updateStatus("Cargando modelo de reconocimiento de manos...", true);
-      model = await handpose.load();
-      updateStatus("Modelo cargado.", true);
-
-      await setupCamera();
-      updateStatus("Cámara lista. Muestra una seña con la mano.", true);
-
-      detectHands();
-
-    } catch (err) {
-      console.error("Error en la inicialización:", err);
-      updateStatus("Error al inicializar la aplicación de gestos.", true);
+      requestAnimationFrame(detect);
     }
   }
 

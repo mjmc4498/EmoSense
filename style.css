@@ -31,10 +31,11 @@ video, canvas {
   border-radius: 10px;
 }
 
-#status-output {
-  margin-top: 20px;
+#emotion-output, #gesture-output {
+  margin-top: 10px;
   font-size: 1.5em;
   min-height: 1.5em;
+  font-weight: bold;
 }
 
 label, select {
